@@ -1,0 +1,38 @@
+{
+  "name": "nexuscore",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NexusCore — full-stack SaaS analytics dashboard (Next.js + Express + Prisma + PostgreSQL)",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c magenta,cyan \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "npm run dev --workspace @nexuscore/api",
+    "dev:web": "npm run dev --workspace @nexuscore/web",
+    "build": "npm run build --workspace @nexuscore/api && npm run build --workspace @nexuscore/web",
+    "start": "concurrently -n api,web -c magenta,cyan \"npm:start:api\" \"npm:start:web\"",
+    "start:api": "npm run start --workspace @nexuscore/api",
+    "start:web": "npm run start --workspace @nexuscore/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspace @nexuscore/api",
+    "db:generate": "npm run db:generate --workspace @nexuscore/api",
+    "db:migrate": "npm run db:migrate --workspace @nexuscore/api",
+    "db:push": "npm run db:push --workspace @nexuscore/api",
+    "db:seed": "npm run db:seed --workspace @nexuscore/api",
+    "db:studio": "npm run db:studio --workspace @nexuscore/api",
+    "db:reset": "npm run db:reset --workspace @nexuscore/api",
+    "setup": "npm install && npm run db:generate && npm run db:push && npm run db:seed",
+    "clean": "rm -rf node_modules apps/*/node_modules apps/*/.next apps/*/dist"
+  },
+  "devDependencies": {
+    "concurrently": "9.1.2",
+    "prettier": "3.4.2"
+  }
+}

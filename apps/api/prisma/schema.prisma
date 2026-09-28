@@ -1,0 +1,155 @@
+// ---------------------------------------------------------------------------
+// NexusCore — Prisma schema
+// Datasource: PostgreSQL 15+
+// ---------------------------------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ActivityAction {
+  USER_REGISTERED
+  USER_LOGGED_IN
+  USER_LOGGED_OUT
+  PASSWORD_CHANGED
+  PROFILE_UPDATED
+  PROJECT_CREATED
+  PROJECT_UPDATED
+  PROJECT_DELETED
+  PROJECT_STATUS_CHANGED
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  passwordHash  String   @map("password_hash")
+  role          Role     @default(USER)
+  avatarUrl     String?  @map("avatar_url")
+  company       String?
+  jobTitle      String?  @map("job_title")
+  isActive      Boolean  @default(true) @map("is_active")
+  lastLoginAt   DateTime? @map("last_login_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  projects      Project[]
+  refreshTokens RefreshToken[]
+  activities    ActivityLog[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique @map("token_hash")
+  userId    String    @map("user_id")
+  userAgent String?   @map("user_agent")
+  ipAddress String?   @map("ip_address")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  name        String
+  slug        String
+  description String?
+  status      ProjectStatus @default(PLANNING)
+  priority    Priority      @default(MEDIUM)
+  ownerId     String        @map("owner_id")
+  budget      Decimal       @default(0) @db.Decimal(14, 2)
+  progress    Int           @default(0)
+  tags        String[]      @default([])
+  startDate   DateTime?     @map("start_date")
+  dueDate     DateTime?     @map("due_date")
+  archivedAt  DateTime?     @map("archived_at")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  owner    User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  metrics  DailyMetric[]
+  activity ActivityLog[]
+
+  @@unique([ownerId, slug])
+  @@index([ownerId])
+  @@index([status])
+  @@map("projects")
+}
+
+model DailyMetric {
+  id        String   @id @default(cuid())
+  projectId String   @map("project_id")
+  date      DateTime @db.Date
+  visits    Int      @default(0)
+  signups   Int      @default(0)
+  conversions Int    @default(0)
+  revenue   Decimal  @default(0) @db.Decimal(14, 2)
+  churnedUsers Int   @default(0) @map("churned_users")
+  avgSessionSeconds Int @default(0) @map("avg_session_seconds")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, date])
+  @@index([projectId, date])
+  @@map("daily_metrics")
+}
+
+model ActivityLog {
+  id        String         @id @default(cuid())
+  action    ActivityAction
+  message   String
+  userId    String?        @map("user_id")
+  projectId String?        @map("project_id")
+  metadata  Json?
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([projectId])
+  @@map("activity_logs")
+}
